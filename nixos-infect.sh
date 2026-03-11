@@ -1,6 +1,5 @@
 #! /usr/bin/env bash
-
-# More info at: https://github.com/elitak/nixos-infect
+# All credit goes to the original authors: https://github.com/elitak/nixos-infect
 
 set -e -o pipefail
 
@@ -268,14 +267,17 @@ prepareEnv() {
   # $esp and $grubdev are used in makeConf()
   if isEFI; then
     esp="$(findESP)"
-    if mount | grep -q /boot/efi; then
+    if mountpoint -q /boot/efi; then
       bootFs=/boot/efi
-    elif mount | grep -q /boot/EFI; then
+    elif mountpoint -q /boot/EFI; then
       bootFs=/boot/EFI
-    else
+    elif mountpoint -q /boot; then
       bootFs=/boot
+    else
+      bootFs=/boot/efi
     fi
   else
+    bootFs=/boot
     for grubdev in /dev/vda /dev/sda /dev/xvda /dev/nvme0n1 ; do [[ -e $grubdev ]] && break; done
   fi
 
@@ -287,6 +289,8 @@ prepareEnv() {
   # DigitalOcean doesn't seem to set USER while running user data
   export USER="root"
   export HOME="/root"
+  export bootFs
+  export esp
 
   # Nix installer tries to use sudo regardless of whether we're already uid 0
   #which sudo || { sudo() { eval "$@"; }; export -f sudo; }
@@ -415,15 +419,24 @@ infect() {
   echo root/.nix-defexpr/channels >> /etc/NIXOS_LUSTRATE
   (cd / && ls etc/ssh/ssh_host_*_key* || true) >> /etc/NIXOS_LUSTRATE
 
-  rm -rf $bootFs.bak
-  isEFI && umount "$esp"
-
-  mv -v $bootFs $bootFs.bak || { cp -a $bootFs $bootFs.bak ; rm -rf $bootFs/* ; umount $bootFs ; }
-  if isEFI; then
-    mkdir -p $bootFs
-    mount "$esp" $bootFs
-    find $bootFs -depth ! -path $bootFs -exec rm -rf {} +
+  if [[ -z "$bootFs" ]]; then
+    echo "ERROR: bootFs is not defined. Aborting to prevent data loss."
+    exit 1
   fi
+
+  rm -rf $bootFs.bak
+
+  if isEFI; then
+    umount "$bootFs" || true
+    mv -v "$bootFs" "${bootFs}.bak" || { cp -a "$bootFs" "${bootFs}.bak" ; rm -rf "$bootFs"/* ; }
+    mkdir -p "$bootFs"
+    mount "$esp" "$bootFs"
+    find "$bootFs" -depth ! -path "$bootFs" -exec rm -rf {} +
+  else
+    mv -v "$bootFs" "${bootFs}.bak" || { cp -a "$bootFs" "${bootFs}.bak" ; rm -rf "$bootFs"/* ; }
+    mkdir -p "$bootFs"
+  fi
+
   /nix/var/nix/profiles/system/bin/switch-to-configuration boot
 }
 
@@ -433,7 +446,7 @@ fi
 
 [ "$PROVIDER" = "lightsail" ] && newrootfslabel="nixos"
 if [[ "$PROVIDER" = "digitalocean" ]] || [[ "$PROVIDER" = "servarica" ]] || [[ "$PROVIDER" = "hetznercloud" ]] || [[ "$PROVIDER" = "webdock" ]] || [[ "$PROVIDER" = "layer7" ]] || [[ "$PROVIDER" = "hostinger" ]]; then
-	doNetConf=y # some providers require detailed network config to be generated
+  doNetConf=y # some providers require detailed network config to be generated
 fi
 
 checkEnv
