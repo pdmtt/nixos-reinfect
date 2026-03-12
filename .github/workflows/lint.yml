@@ -1,0 +1,23 @@
+name: Lint
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: apt-get update -qq && apt-get install -qq -y "shellcheck=0.9.0-1"
+
+      - name: Run ShellCheck
+        run: shellcheck --severity=warning --shell=bash nixos-infect.sh
