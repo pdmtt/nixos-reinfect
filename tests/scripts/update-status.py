@@ -24,7 +24,7 @@ STATUS_ICONS = {
     "failure": "❌",
 }
 STATUS_BLOCK_TEMPLATE = textwrap.dedent(f"""\
-    {{SENTINEL_BEGIN}}
+    {{sentinel_begin}}
 
     {{table}}
 
@@ -37,7 +37,7 @@ STATUS_BLOCK_TEMPLATE = textwrap.dedent(f"""\
     > - {STATUS_ICONS["failure"]} fail
     > - ⬜ not tested
 
-    {{SENTINEL_END}}""")
+    {{sentinel_end}}""")
 
 
 class Result(TypedDict):
@@ -56,6 +56,10 @@ class Status(TypedDict):
 
 def load_results_from_files(results_dir_path: "Path") -> "list[Result]":
     results: list[Result] = []
+
+    if not results_dir_path.exists():
+        print(f"Warning: results directory {results_dir_path!r} does not exist", file=sys.stderr)
+        return results
 
     for path in results_dir_path.rglob("*.json"):
         try:
@@ -179,6 +183,8 @@ def build_status_block(status: "Status") -> str:
     return STATUS_BLOCK_TEMPLATE.format(
         last_updated=date_str,
         table=table,
+        sentinel_begin=SENTINEL_BEGIN,
+        sentinel_end=SENTINEL_END,
     )
 
 
@@ -201,9 +207,8 @@ def update_readme(readme_path: "Path", status_block: str) -> None:
 
 def setup_parser() -> "argparse.ArgumentParser":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--results-dir", required=True, type=Path)
-    parser.add_argument("--status-file", required=True, type=Path)
-    parser.add_argument("--readme", required=True, type=Path)
+    for path_arg in ["results-dir", "status-file", "readme"]:
+        parser.add_argument(f"--{path_arg}", required=True, type=Path)
     parser.add_argument("--run-url-prefix", default="", type=str)
     return parser
 
