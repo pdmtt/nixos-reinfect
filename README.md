@@ -13,6 +13,22 @@ assuring the script will successfully run as many times as needed.
 
 ## Tested on
 <!-- STATUS:BEGIN -->
+
+| Provider | debian-11 | debian-12 | ubuntu-22.04 | ubuntu-24.04 |
+|----------|:---:|:---:|:---:|:---:|
+| Digitalocean | ⬜ n/a | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23022453674) | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23022453674) | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23022453674) |
+| Hetzner | ✅ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23022453674) | ✅ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23022453674) | ✅ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23022453674) | ✅ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23022453674) |
+
+
+> Last updated: 2026-03-12
+>
+> Each cell links to the GitHub Actions run.
+> 
+> Legend: 
+> - ✅ pass
+> - ❌ fail
+> - ⬜ not tested
+
 <!-- STATUS:END -->
 
 ## Motivation
