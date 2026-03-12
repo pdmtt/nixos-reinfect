@@ -35,6 +35,15 @@ This script has successfully been tested on at least the follow hosting provider
 Should you find that it works on your hoster,
 feel free to update this README and issue a pull request.
 
+<!-- STATUS:BEGIN -->
+## Automated Test Matrix
+
+> Last updated: n/a · Runs every Monday and Thursday via CI.
+> Each cell links to the GitHub Actions run. Legend: ✅ pass · ❌ fail · ⬜ not tested
+
+*No test results yet — the table will be populated after the first CI run.*
+<!-- STATUS:END -->
+
 ## Motivation
 
 Motivation for this script: nixos-assimilate should supplant this script entirely,
