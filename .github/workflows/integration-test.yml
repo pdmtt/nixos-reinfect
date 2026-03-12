@@ -158,14 +158,14 @@ jobs:
           printf '{"provider":"%s","os":"%s","status":"%s","run_id":"%s","run_url":"%s","timestamp":"%s"}\n' \
             "${{ matrix.provider }}" "${{ matrix.os }}" "$STATUS" \
             "${{ github.run_id }}" "$RUN_URL" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            > /tmp/result.json
+            > /tmp/result-${{ matrix.provider }}-${{ matrix.os }}.json
 
       - name: Upload result
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: result-${{ matrix.provider }}-${{ matrix.os }}
-          path: /tmp/result.json
+          path: /tmp/result-${{ matrix.provider }}-${{ matrix.os }}.json
 
   update-status:
     name: Update status table
