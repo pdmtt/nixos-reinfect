@@ -26,7 +26,7 @@ makeConf() {
   for trypath in /root/.ssh/authorized_keys /home/$SUDO_USER/.ssh/authorized_keys $HOME/.ssh/authorized_keys; do
       [[ -r "$trypath" ]] \
       && keys=$(sed -E 's/^[^#].*[[:space:]]((sk-ssh|sk-ecdsa|ssh|ecdsa)-[^[:space:]]+)[[:space:]]+([^[:space:]]+)([[:space:]]*.*)$/\1 \3\4/' "$trypath") \
-      && [[ ! -z "$keys" ]] \
+      && [[ -n "$keys" ]] \
       && break
   done
   local network_import=""
@@ -142,7 +142,7 @@ makeNetworkingConf() {
   local IFS=$'\n'
   eth0_name=$(ip address show | grep '^2:' | awk -F': ' '{print $2}')
   eth0_ip4s=$(ip address show dev "$eth0_name" | grep 'inet ' | sed -r 's|.*inet ([0-9.]+)/([0-9]+).*|{ address="\1"; prefixLength=\2; }|')
-  eth0_ip6s=$(ip address show dev "$eth0_name" | grep 'inet6 ' | sed -r 's|.*inet6 ([0-9a-f:]+)/([0-9]+).*|{ address="\1"; prefixLength=\2; }|' || '')
+  eth0_ip6s=$(ip address show dev "$eth0_name" | grep 'inet6 ' | sed -r 's|.*inet6 ([0-9a-f:]+)/([0-9]+).*|{ address="\1"; prefixLength=\2; }|' || echo '')
   gateway=$(ip route show dev "$eth0_name" | grep default | sed -r 's|default via ([0-9.]+).*|\1|')
   gateway6=$(ip -6 route show dev "$eth0_name" | grep default | sed -r 's|default via ([0-9a-f:]+).*|\1|' || true)
   ether0=$(ip address show dev "$eth0_name" | grep link/ether | sed -r 's|.*link/ether ([0-9a-f:]+) .*|\1|')
@@ -150,7 +150,7 @@ makeNetworkingConf() {
   eth1_name=$(ip address show | grep '^3:' | awk -F': ' '{print $2}')||true
   if [ -n "$eth1_name" ];then
     eth1_ip4s=$(ip address show dev "$eth1_name" | grep 'inet ' | sed -r 's|.*inet ([0-9.]+)/([0-9]+).*|{ address="\1"; prefixLength=\2; }|')
-    eth1_ip6s=$(ip address show dev "$eth1_name" | grep 'inet6 ' | sed -r 's|.*inet6 ([0-9a-f:]+)/([0-9]+).*|{ address="\1"; prefixLength=\2; }|' || '')
+    eth1_ip6s=$(ip address show dev "$eth1_name" | grep 'inet6 ' | sed -r 's|.*inet6 ([0-9a-f:]+)/([0-9]+).*|{ address="\1"; prefixLength=\2; }|' || echo '')
     ether1=$(ip address show dev "$eth1_name" | grep link/ether | sed -r 's|.*link/ether ([0-9a-f:]+) .*|\1|')
     interfaces1=$(cat << EOF
       $eth1_name = {
@@ -259,7 +259,7 @@ findESP() {
   done
   [[ -z "$esp" ]] && { echo "WARNING: No ESP mount point found"; return 1; }
   for uuid in /dev/disk/by-uuid/*; do
-    [[ $(readlink -f "$uuid") == "$esp" ]] && echo $uuid && return 0
+    [[ $(readlink -f "$uuid") == "$esp" ]] && echo "$uuid" && return 0
   done
 }
 
@@ -284,7 +284,7 @@ prepareEnv() {
   # Retrieve root fs block device
   #                   (get root mount)  (get partition or logical volume)
   rootfsdev=$(mount | grep "on / type" | awk '{print $1;}')
-  rootfstype=$(df $rootfsdev --output=fstype | sed 1d)
+  rootfstype=$(df "$rootfsdev" --output=fstype | sed 1d)
 
   # DigitalOcean doesn't seem to set USER while running user data
   export USER="root"
@@ -387,14 +387,14 @@ infect() {
 
   if [[ $NIXOS_CONFIG = http* ]]
   then
-    curl -L $NIXOS_CONFIG -o /etc/nixos/configuration.nix
+    curl -L "$NIXOS_CONFIG" -o /etc/nixos/configuration.nix
     unset NIXOS_CONFIG
   fi
 
   export NIXOS_CONFIG="${NIXOS_CONFIG:-/etc/nixos/configuration.nix}"
 
   nix-env --set \
-    -I nixpkgs=$(realpath $HOME/.nix-defexpr/channels/nixos) \
+    -I nixpkgs="$(realpath $HOME/.nix-defexpr/channels/nixos)" \
     -f '<nixpkgs/nixos>' \
     -p /nix/var/nix/profiles/system \
     -A system
@@ -414,9 +414,7 @@ infect() {
 
   # Stage the Nix coup d'état
   touch /etc/NIXOS
-  echo etc/nixos                  >> /etc/NIXOS_LUSTRATE
-  echo etc/resolv.conf            >> /etc/NIXOS_LUSTRATE
-  echo root/.nix-defexpr/channels >> /etc/NIXOS_LUSTRATE
+  { echo etc/nixos; echo etc/resolv.conf; echo root/.nix-defexpr/channels; } >> /etc/NIXOS_LUSTRATE
   (cd / && ls etc/ssh/ssh_host_*_key* || true) >> /etc/NIXOS_LUSTRATE
 
   if [[ -z "$bootFs" ]]; then
@@ -428,19 +426,19 @@ infect() {
 
   if isEFI; then
     umount "$bootFs" || true
-    mv -v "$bootFs" "${bootFs}.bak" || { cp -a "$bootFs" "${bootFs}.bak" ; rm -rf "$bootFs"/* ; }
+    mv -v "$bootFs" "${bootFs}.bak" || { cp -a "$bootFs" "${bootFs}.bak" ; rm -rf "${bootFs:?}"/* ; }
     mkdir -p "$bootFs"
     mount "$esp" "$bootFs"
     find "$bootFs" -depth ! -path "$bootFs" -exec rm -rf {} +
   else
-    mv -v "$bootFs" "${bootFs}.bak" || { cp -a "$bootFs" "${bootFs}.bak" ; rm -rf "$bootFs"/* ; }
+    mv -v "$bootFs" "${bootFs}.bak" || { cp -a "$bootFs" "${bootFs}.bak" ; rm -rf "${bootFs:?}"/* ; }
     mkdir -p "$bootFs"
   fi
 
   /nix/var/nix/profiles/system/bin/switch-to-configuration boot
 }
 
-if [ ! -v $PROVIDER ]; then
+if [ ! -v "$PROVIDER" ]; then
   autodetectProvider
 fi
 
