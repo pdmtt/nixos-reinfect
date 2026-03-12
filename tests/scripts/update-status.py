@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-from __future__ import annotations
-
 """
 Merges per-combination test result JSON files into tests/STATUS.json,
 then regenerates the status table section in README.md between sentinel
@@ -10,171 +8,190 @@ Usage:
     update-status.py --results-dir <dir> --status-file <path> --readme <path>
                      [--run-url-prefix <url>]
 """
+
 import argparse
 import json
-import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-
+import textwrap
+from typing import cast, TypedDict
 
 SENTINEL_BEGIN = "<!-- STATUS:BEGIN -->"
 SENTINEL_END = "<!-- STATUS:END -->"
-
-# Canonical column order; unknown OSes are appended alphabetically
-OS_ORDER = [
-    "ubuntu-24.04",
-    "ubuntu-22.04",
-    "debian-12",
-    "debian-11",
-    "fedora-39",
-]
-
-# Canonical row order; unknown providers are appended alphabetically
-PROVIDER_ORDER = [
-    "hetzner",
-    "digitalocean",
-    "vultr",
-    "linode",
-    "aws-lightsail",
-    "ovh",
-]
-
 STATUS_ICONS = {
     "success": "✅",
     "failure": "❌",
 }
+STATUS_BLOCK_TEMPLATE = textwrap.dedent(f"""\
+    {{SENTINEL_BEGIN}}
+
+    {{table}}
+
+    > Last updated: {{last_updated}}
+    >
+    > Each cell links to the GitHub Actions run.
+    > 
+    > Legend: 
+    > - {STATUS_ICONS["success"]} pass
+    > - {STATUS_ICONS["failure"]} fail
+    > - ⬜ not tested
+
+    {{SENTINEL_END}}""")
 
 
-def load_status(status_file: Path) -> dict:
-    if status_file.exists():
-        with open(status_file) as f:
-            return json.load(f)
-    return {"last_updated": "", "results": {}}
+class Result(TypedDict):
+    provider: str
+    os: str
+    status: str
+    run_id: str
+    run_url: str
+    timestamp: str
 
 
-def save_status(status_file: Path, data: dict) -> None:
-    status_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(status_file, "w") as f:
-        json.dump(data, f, indent=2)
-        f.write("\n")
+class Status(TypedDict):
+    last_updated: str
+    results: dict[str, Result]
 
 
-def load_results(results_dir: Path) -> list[dict]:
-    results = []
-    for path in results_dir.rglob("*.json"):
+def load_results_from_files(results_dir_path: "Path") -> "list[Result]":
+    results: list[Result] = []
+
+    for path in results_dir_path.rglob("*.json"):
         try:
             with open(path) as f:
-                results.append(json.load(f))
+                result = cast("Result", json.load(f))
+                results.append(result)
         except (json.JSONDecodeError, OSError) as e:
             print(f"Warning: could not read {path}: {e}", file=sys.stderr)
+
     return results
 
 
-def merge_results(existing: dict, new_results: list[dict], run_url_prefix: str) -> dict:
+def load_status_from_file(status_file_path: "Path") -> "Status":
+    try:
+        with open(status_file_path) as f:
+            return cast("Status", json.load(f))
+    except FileNotFoundError:
+        return {"last_updated": "", "results": {}}
+
+
+def merge_results(
+    status: "Status",
+    new_results: "list[Result]",
+    run_url_prefix: str,
+) -> "Status":
     for result in new_results:
         provider = result.get("provider", "")
         os_name = result.get("os", "")
+
+        # Skip malformed results
         if not provider or not os_name:
+            print(
+                f"Warning: skipping result with missing provider or OS name: {result}",
+                file=sys.stderr,
+            )
             continue
+
         key = f"{provider}/{os_name}"
-        entry = {
+
+        partial_result = {
             "status": result.get("status", "failure"),
             "run_id": result.get("run_id", ""),
             "timestamp": result.get("timestamp", ""),
         }
+
         run_id = result.get("run_id", "")
+
         if run_url_prefix and run_id:
-            entry["run_url"] = f"{run_url_prefix}/{run_id}"
+            partial_result["run_url"] = f"{run_url_prefix}/{run_id}"
         elif "run_url" in result:
-            entry["run_url"] = result["run_url"]
-        existing["results"][key] = entry
-    existing["last_updated"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    return existing
+            partial_result["run_url"] = result["run_url"]
+
+        result = Result(**partial_result)
+
+        status["results"][key] = result
+
+    status["last_updated"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    return status
 
 
-def build_table(results: dict) -> str:
-    all_providers = set()
-    all_oses = set()
-    for key in results:
+def save_status(status_file_path: "Path", status: "Status") -> None:
+    status_file_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(status_file_path, "w") as f:
+        json.dump(status, f, indent=2)
+        f.write("\n")
+
+
+def build_table(status: "Status") -> str:
+    all_providers: set[str] = set()
+    all_oses: set[str] = set()
+
+    for key in status["results"]:
         parts = key.split("/", 1)
         if len(parts) == 2:
             all_providers.add(parts[0])
             all_oses.add(parts[1])
 
-    def sort_key_provider(p):
-        try:
-            return (PROVIDER_ORDER.index(p), p)
-        except ValueError:
-            return (len(PROVIDER_ORDER), p)
-
-    def sort_key_os(o):
-        try:
-            return (OS_ORDER.index(o), o)
-        except ValueError:
-            return (len(OS_ORDER), o)
-
-    providers = sorted(all_providers, key=sort_key_provider)
-    oses = sorted(all_oses, key=sort_key_os)
-
-    if not providers or not oses:
+    if not all_providers or not all_oses:
         return "*No test results yet.*\n"
+
+    providers = sorted(all_providers)
+    oses = sorted(all_oses)
 
     # Header row
     header = "| Provider | " + " | ".join(oses) + " |"
     separator = "|----------|" + "|".join([":---:"] * len(oses)) + "|"
 
     rows = [header, separator]
+
     for provider in providers:
-        cells = []
+        cells: list[str] = []
         for os_name in oses:
             key = f"{provider}/{os_name}"
-            entry = results.get(key)
-            if entry is None:
+            result = status["results"].get(key)
+            if result is None:
                 cells.append("⬜ n/a")
             else:
-                icon = STATUS_ICONS.get(entry["status"], "❓")
-                run_url = entry.get("run_url", "")
+                icon = STATUS_ICONS.get(result["status"], "❓")
+                run_url = result.get("run_url", "")
                 if run_url:
                     cells.append(f"{icon} [run]({run_url})")
                 else:
                     cells.append(icon)
         provider_label = provider.replace("-", " ").title()
+
         rows.append(f"| {provider_label} | " + " | ".join(cells) + " |")
 
     return "\n".join(rows) + "\n"
 
 
-def build_status_block(results: dict, last_updated: str) -> str:
+def build_status_block(status: "Status") -> str:
     try:
-        dt = datetime.fromisoformat(last_updated.replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(status["last_updated"].replace("Z", "+00:00"))
         date_str = dt.strftime("%Y-%m-%d")
     except (ValueError, AttributeError):
         date_str = "unknown"
 
-    table = build_table(results)
+    table = build_table(status)
 
-    lines = [
-        SENTINEL_BEGIN,
-        "## Automated Test Matrix",
-        "",
-        f"> Last updated: {date_str} · Runs every Monday and Thursday via CI.",
-        "> Each cell links to the GitHub Actions run. Legend: ✅ pass · ❌ fail · ⬜ not tested",
-        "",
-        table,
-        SENTINEL_END,
-    ]
-    return "\n".join(lines)
+    return STATUS_BLOCK_TEMPLATE.format(
+        last_updated=date_str,
+        table=table,
+    )
 
 
-def update_readme(readme_path: Path, status_block: str) -> None:
+def update_readme(readme_path: "Path", status_block: str) -> None:
     content = readme_path.read_text()
 
     begin_idx = content.find(SENTINEL_BEGIN)
     end_idx = content.find(SENTINEL_END)
 
     if begin_idx != -1 and end_idx != -1:
-        new_content = content[:begin_idx] + status_block + content[end_idx + len(SENTINEL_END):]
+        new_content = (
+            content[:begin_idx] + status_block + content[end_idx + len(SENTINEL_END) :]
+        )
     else:
         # Sentinels not found — append at end
         new_content = content.rstrip("\n") + "\n\n" + status_block + "\n"
@@ -182,28 +199,36 @@ def update_readme(readme_path: Path, status_block: str) -> None:
     readme_path.write_text(new_content)
 
 
-def main() -> None:
+def setup_parser() -> "argparse.ArgumentParser":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--results-dir", required=True, type=Path)
     parser.add_argument("--status-file", required=True, type=Path)
     parser.add_argument("--readme", required=True, type=Path)
     parser.add_argument("--run-url-prefix", default="", type=str)
-    args = parser.parse_args()
+    return parser
 
-    print(f"Loading existing status from {args.status_file}")
-    status = load_status(args.status_file)
 
-    print(f"Loading new results from {args.results_dir}")
-    new_results = load_results(args.results_dir)
+def main() -> None:
+    args = setup_parser().parse_args()
+    status_file_path = cast("Path", args.status_file)
+    results_dir = cast("Path", args.results_dir)
+    readme_path = cast("Path", args.readme)
+    run_url_prefix = cast("str", args.run_url_prefix)
+
+    print(f"Loading new results from {results_dir}")
+    new_results = load_results_from_files(results_dir)
     print(f"Found {len(new_results)} result file(s)")
 
-    status = merge_results(status, new_results, args.run_url_prefix)
-    save_status(args.status_file, status)
-    print(f"Saved updated status to {args.status_file}")
+    print(f"Loading existing status from {status_file_path}")
+    status = load_status_from_file(status_file_path)
+    status = merge_results(status, new_results, run_url_prefix)
 
-    status_block = build_status_block(status["results"], status["last_updated"])
-    update_readme(args.readme, status_block)
-    print(f"Updated README at {args.readme}")
+    save_status(status_file_path, status)
+    print(f"Saved updated status to {status_file_path}: {json.dumps(status, indent=2)}")
+
+    status_block = build_status_block(status)
+    update_readme(readme_path, status_block)
+    print(f"Updated README at {readme_path}")
 
 
 if __name__ == "__main__":

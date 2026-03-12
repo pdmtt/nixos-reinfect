@@ -2,11 +2,11 @@ name: Integration Tests
 
 on:
   schedule:
-    - cron: '0 3 * * 1,4'  # Monday and Thursday at 03:00 UTC
+    - cron: "0 3 * * 1,4" # Monday and Thursday at 03:00 UTC
   workflow_dispatch:
     inputs:
       provider_filter:
-        description: 'Run only this provider (leave empty for all): hetzner, digitalocean'
+        description: "Run only this provider (leave empty for all): hetzner, digitalocean"
         required: false
         type: string
 
@@ -63,7 +63,7 @@ jobs:
       - name: Install OpenTofu
         uses: opentofu/setup-opentofu@v1
         with:
-          tofu_version: '1.8'
+          tofu_version: "1.8"
 
       - name: Install dependencies
         run: |
@@ -186,9 +186,14 @@ jobs:
           path: /tmp/results
           merge-multiple: true
 
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.10.9"
+
       - name: Update STATUS.json and README
         run: |
-          python3 tests/scripts/update-status.py \
+          uv run --python 3.12 tests/scripts/update-status.py \
             --results-dir /tmp/results \
             --status-file tests/STATUS.json \
             --readme README.md \
