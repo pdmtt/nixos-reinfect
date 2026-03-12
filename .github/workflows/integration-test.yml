@@ -85,7 +85,8 @@ jobs:
           tofu apply -auto-approve -input=false
           echo "VM_IP=$(tofu output -raw ip_address)" >> "$GITHUB_ENV"
 
-      - name: Wait for SSH (up to 5 min)
+      - name: Wait for SSH
+        timeout-minutes: 5
         run: |
           echo "Waiting for SSH on $VM_IP..."
           for i in $(seq 1 60); do
@@ -112,7 +113,8 @@ jobs:
             "env $PROVIDER_ENV NIX_CHANNEL=nixos-24.11 NO_REBOOT=1 bash -x /tmp/nixos-infect.sh" \
             2>&1 | tee /tmp/infect-output.log
 
-      - name: Reboot and wait (up to 10 min)
+      - name: Reboot and wait
+        timeout-minutes: 10
         run: |
           ssh -o StrictHostKeyChecking=no -i /tmp/test-key "root@$VM_IP" \
             "nohup sh -c 'sleep 2 && reboot' &" 2>/dev/null || true
@@ -123,6 +125,7 @@ jobs:
             ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes \
               -i /tmp/test-key "root@$VM_IP" true 2>/dev/null && break
             echo "Waiting for reboot... attempt $i/60"
+            [ "$i" -eq 60 ] && echo "ERROR: SSH never came back after reboot" && exit 1
             sleep 10
           done
 
