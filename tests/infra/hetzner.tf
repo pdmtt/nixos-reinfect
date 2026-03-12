@@ -1,6 +1,6 @@
 resource "hcloud_ssh_key" "this" {
   count      = var.provider_name == "hetzner" ? 1 : 0
-  name       = "${var.vm_name}-${var.run_id}"
+  name       = "${var.vm_name}-${var.run_id}-${replace(var.image, "/", "-")}"
   public_key = var.ssh_public_key
 }
 
