@@ -1,57 +1,22 @@
-# NixOS-Infect
+# nixos-reinfect
 
 ## What is this?
-A script to install NixOS on non-NixOS hosts.
+A script to install NixOS on non-NixOS Linux-based hosts.
 
-NixOS-Infect is so named because of the high likelihood of rendering a system inoperable.
+This is a fork of [nixos-infect](github.com/elitak/nixos-infect).
+
+nixos-infect was originally so named because of the high likelihood of rendering a system inoperable.
 Use with extreme caution and preferably only on newly provisioned systems.
 
-This script has successfully been tested on at least the follow hosting providers and plans:
+This repository's name was changed to nixos-REinfect to highlight the effort of implementing reproducible testing, 
+assuring the script will successfully run as many times as needed.
 
-* [DigitalOcean](https://www.digitalocean.com/products/droplets/)
-* [Hetzner Cloud](https://www.hetzner.com/cloud)
-* [Vultr](https://www.vultr.com/)
-* [Interserver VPS](https://www.interserver.net/vps/)
-* [Tencent Cloud Lighthouse](https://cloud.tencent.com/product/lighthouse)
-* [OVHcloud](https://www.ovh.com/)
-* [Oracle Cloud Infrastructure](https://www.oracle.com/cloud/)
-* [GalaxyGate](https://galaxygate.net)
-* [Cockbox](https://cockbox.org)
-* [Google Cloud Platform](https://cloud.google.com/)
-* [Contabo](https://contabo.com)
-* [Liga Hosting](https://ligahosting.ro)
-* [AWS Lightsail](https://aws.amazon.com/lightsail/)
-* [Windcloud](https://windcloud.de/)
-* [Clouding.io](https://clouding.io)
-* [Scaleway](https://scaleway.com)
-* [RackNerd](https://my.racknerd.com/index.php?rp=/store/black-friday-2022)
-* [hostmyservers](https://hostmyservers.fr)
-* [Hostinger](https://hostinger.com)
-* [Servinga](https://servinga.com/)
-* [Ionos](https://www.ionos.de/server/vps)
-* [Aeza](https://aeza.net/)
-* [Severs.com](https://servers.com)
-
-Should you find that it works on your hoster,
-feel free to update this README and issue a pull request.
-
+## Tested on
 <!-- STATUS:BEGIN -->
-## Automated Test Matrix
-
-> Last updated: 2026-03-12 · Runs every Monday and Thursday via CI.
-> Each cell links to the GitHub Actions run. Legend: ✅ pass · ❌ fail · ⬜ not tested
-
-| Provider | ubuntu-24.04 | debian-12 | debian-11 |
-|----------|:---:|:---:|:---:|
-| Hetzner | ✅ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23016330002) | ⬜ n/a | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23012670761) |
-| Digitalocean | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23011236734) | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23011236734) | ⬜ n/a |
-
 <!-- STATUS:END -->
 
 ## Motivation
 
-Motivation for this script: nixos-assimilate should supplant this script entirely,
-if it's ever completed.
 nixos-in-place was quite broken when I tried it,
 and also took a pretty janky approach that was substantially more complex than this
 (although it supported more platforms):
@@ -63,7 +28,13 @@ and most importantly, simply didn't work for me!
 
 ## How do I use it?
 
-0) **Read and understand the [the script](./nixos-infect)**
+> [!WARNING]
+> Use with extreme caution and preferably only on newly provisioned systems.
+>
+> This script wipes out the targeted host's root filesystem when it runs to completion. 
+> A failure will leave the system in an inconsistent state.
+
+0) **Read and understand the [the script](./nixos-infect.sh)**
 1) Deploy any custom configuration you want on your host
 2) Deploy your host as non-Nix Operating System.
 3) Deploy an SSH key for the root user.
@@ -74,14 +45,11 @@ and most importantly, simply didn't work for me!
 > If a custom SSH port is used, it will be reverted back to 22.
 
 4) run the script with:
+```sh
+# bash -x is advised, because it'll help you to troubleshoot if anything fails.
+curl https://raw.githubusercontent.com/pdmtt/nixos-reinfect/master/nixos-infect.sh \
+  | NIX_CHANNEL=nixos-24.05 bash -x
 ```
-  curl https://raw.githubusercontent.com/elitak/nixos-infect/master/nixos-infect.sh | NIX_CHANNEL=nixos-24.05 bash -x
-```
-
-*NB*: This script wipes out the targeted host's root filesystem when it runs to completion.
-Any errors halt execution.
-A failure will leave the system in an inconsistent state,
-and so it is advised to run with `bash -x`.
 
 If you're running this script and networking does not come up after reboot, try setting `doNetConf=y` environment variable when executing the script. This generates the network configuration automatically.
 
@@ -175,15 +143,6 @@ When creating a server provide the following yaml as "Cloud config":
 runcmd:
   - curl https://raw.githubusercontent.com/elitak/nixos-infect/master/nixos-infect.sh | PROVIDER=hetznercloud NIX_CHANNEL=nixos-24.05 bash 2>&1 | tee /tmp/infect.log
 ```
-
-#### Tested on
-|Distribution|       Name      | Status    | test date|
-|------------|-----------------|-----------|----------|
-| Debian     | 11              |**success**|2023-04-29|
-| Debian     | 12    aarch64   |**success**|2023-09-02|
-| Ubuntu     | 20.04 x64       |**success**|(Unknown) |
-| Ubuntu     | 22.04 x64       |**success**|2023-04-29|
-| Ubuntu     | 22.04 aarch64   |**success**|2023-04-16|
 
 ### InterServer VPS
 

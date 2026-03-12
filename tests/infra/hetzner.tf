@@ -1,12 +1,12 @@
 resource "hcloud_ssh_key" "this" {
   count      = var.provider_name == "hetzner" ? 1 : 0
-  name       = "${var.vm_name}-${var.run_id}"
+  name       = local.resource_name
   public_key = var.ssh_public_key
 }
 
 resource "hcloud_server" "this" {
   count       = var.provider_name == "hetzner" ? 1 : 0
-  name        = "${var.vm_name}-${var.run_id}"
+  name        = local.resource_name
   image       = var.image
   server_type = var.size
   location    = var.region
@@ -17,3 +17,4 @@ resource "hcloud_server" "this" {
     run_id  = var.run_id
   }
 }
+

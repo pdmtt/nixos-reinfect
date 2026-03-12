@@ -1,8 +1,8 @@
 [
-  {"provider": "hetzner",      "os": "ubuntu-24.04", "image": "ubuntu-24.04",     "region": "fsn1", "size": "cpx11"},
-  {"provider": "hetzner",      "os": "ubuntu-22.04", "image": "ubuntu-22.04",     "region": "fsn1", "size": "cpx11"},
-  {"provider": "hetzner",      "os": "debian-12",    "image": "debian-12",        "region": "fsn1", "size": "cpx11"},
-  {"provider": "hetzner",      "os": "debian-11",    "image": "debian-11",        "region": "fsn1", "size": "cpx11"},
+  {"provider": "hetzner",      "os": "ubuntu-24.04", "image": "ubuntu-24.04",     "region": "nbg1", "size": "cx23"},
+  {"provider": "hetzner",      "os": "ubuntu-22.04", "image": "ubuntu-22.04",     "region": "nbg1", "size": "cx23"},
+  {"provider": "hetzner",      "os": "debian-12",    "image": "debian-12",        "region": "nbg1", "size": "cx23"},
+  {"provider": "hetzner",      "os": "debian-11",    "image": "debian-11",        "region": "nbg1", "size": "cx23"},
   {"provider": "digitalocean", "os": "ubuntu-24.04", "image": "ubuntu-24-04-x64", "region": "nyc1", "size": "s-1vcpu-1gb"},
   {"provider": "digitalocean", "os": "ubuntu-22.04", "image": "ubuntu-22-04-x64", "region": "nyc1", "size": "s-1vcpu-1gb"},
   {"provider": "digitalocean", "os": "debian-12",    "image": "debian-12-x64",    "region": "nyc1", "size": "s-1vcpu-1gb"}

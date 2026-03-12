@@ -12,3 +12,7 @@ terraform {
     }
   }
 }
+
+locals {
+  resource_name = "${var.vm_name}-${var.run_id}-${replace(var.image, "/", "-")}"
+}
