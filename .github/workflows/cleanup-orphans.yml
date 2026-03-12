@@ -1,0 +1,28 @@
+name: Cleanup Orphan VMs
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    name: Destroy leaked test VMs
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -qq -y jq curl
+          curl -sSL https://github.com/hetznercloud/cli/releases/latest/download/hcloud-linux-amd64.tar.gz \
+            | sudo tar xz -C /usr/local/bin hcloud
+
+      - name: Cleanup orphan VMs
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+        run: bash tests/scripts/cleanup-orphans.sh

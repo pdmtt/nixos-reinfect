@@ -1,0 +1,203 @@
+name: Integration Tests
+
+on:
+  schedule:
+    - cron: '0 3 * * 1,4'  # Monday and Thursday at 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      provider_filter:
+        description: 'Run only this provider (leave empty for all): hetzner, digitalocean'
+        required: false
+        type: string
+
+# Never cancel runs that have live VMs — orphaned VMs cost money
+concurrency:
+  group: integration-tests
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  load-matrix:
+    name: Load test matrix
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set matrix
+        id: set-matrix
+        run: |
+          if [ -n "${{ inputs.provider_filter }}" ]; then
+            MATRIX=$(jq -c --arg p "${{ inputs.provider_filter }}" '[.[] | select(.provider == $p)]' tests/matrix.json)
+          else
+            MATRIX=$(jq -c '.' tests/matrix.json)
+          fi
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
+  test:
+    name: "${{ matrix.provider }} / ${{ matrix.os }}"
+    needs: load-matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include: ${{ fromJson(needs.load-matrix.outputs.matrix) }}
+    # Set shared TF_VAR_* at job level so all steps (including destroy) inherit them
+    env:
+      TF_VAR_provider_name: ${{ matrix.provider }}
+      TF_VAR_image: ${{ matrix.image }}
+      TF_VAR_region: ${{ matrix.region }}
+      TF_VAR_size: ${{ matrix.size }}
+      TF_VAR_run_id: ${{ github.run_id }}
+      HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+      DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: '1.8'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -qq -y curl
+          curl -sSL https://github.com/hetznercloud/cli/releases/latest/download/hcloud-linux-amd64.tar.gz \
+            | sudo tar xz -C /usr/local/bin hcloud
+
+      - name: Generate SSH keypair
+        run: ssh-keygen -t ed25519 -f /tmp/test-key -N ""
+
+      - name: Set SSH public key env var
+        run: echo "TF_VAR_ssh_public_key=$(cat /tmp/test-key.pub)" >> "$GITHUB_ENV"
+
+      - name: Create VM
+        id: create_vm
+        working-directory: tests/infra
+        run: |
+          tofu init -input=false
+          tofu apply -auto-approve -input=false
+          echo "VM_IP=$(tofu output -raw ip_address)" >> "$GITHUB_ENV"
+
+      - name: Wait for SSH (up to 5 min)
+        run: |
+          echo "Waiting for SSH on $VM_IP..."
+          for i in $(seq 1 60); do
+            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes \
+              -i /tmp/test-key "root@$VM_IP" true 2>/dev/null && break
+            echo "Attempt $i/60 failed, retrying in 5s..."
+            sleep 5
+          done
+
+      - name: Run nixos-infect
+        id: run_infect
+        run: |
+          case "${{ matrix.provider }}" in
+            hetzner)      PROVIDER_ENV="PROVIDER=hetznercloud" ;;
+            digitalocean) PROVIDER_ENV="PROVIDER=digitalocean" ;;
+            *)            PROVIDER_ENV="" ;;
+          esac
+
+          scp -o StrictHostKeyChecking=no -i /tmp/test-key \
+            nixos-infect.sh "root@$VM_IP:/tmp/nixos-infect.sh"
+
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
+            -o ServerAliveInterval=30 -i /tmp/test-key "root@$VM_IP" \
+            "env $PROVIDER_ENV NIX_CHANNEL=nixos-24.11 NO_REBOOT=1 bash -x /tmp/nixos-infect.sh" \
+            2>&1 | tee /tmp/infect-output.log
+
+      - name: Reboot and wait (up to 10 min)
+        run: |
+          ssh -o StrictHostKeyChecking=no -i /tmp/test-key "root@$VM_IP" \
+            "nohup sh -c 'sleep 2 && reboot' &" 2>/dev/null || true
+          echo "Waiting 30s for VM to start rebooting..."
+          sleep 30
+          echo "Waiting for SSH to come back..."
+          for i in $(seq 1 60); do
+            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes \
+              -i /tmp/test-key "root@$VM_IP" true 2>/dev/null && break
+            echo "Waiting for reboot... attempt $i/60"
+            sleep 10
+          done
+
+      - name: Verify NixOS installation
+        id: verify
+        run: bash tests/scripts/verify-nixos.sh "$VM_IP" /tmp/test-key
+
+      - name: Collect logs
+        if: always()
+        run: |
+          ssh -o StrictHostKeyChecking=no -i /tmp/test-key "root@$VM_IP" \
+            "journalctl -b --no-pager" > /tmp/journal.log 2>/dev/null || true
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-${{ matrix.provider }}-${{ matrix.os }}
+          path: /tmp/*.log
+          retention-days: 14
+
+      - name: Destroy VM
+        if: always()
+        working-directory: tests/infra
+        run: tofu destroy -auto-approve -input=false || true
+
+      - name: Write result
+        if: always()
+        run: |
+          STATUS="${{ steps.verify.outcome }}"
+          [ "$STATUS" = "success" ] && STATUS="success" || STATUS="failure"
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          printf '{"provider":"%s","os":"%s","status":"%s","run_id":"%s","run_url":"%s","timestamp":"%s"}\n' \
+            "${{ matrix.provider }}" "${{ matrix.os }}" "$STATUS" \
+            "${{ github.run_id }}" "$RUN_URL" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            > /tmp/result.json
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: result-${{ matrix.provider }}-${{ matrix.os }}
+          path: /tmp/result.json
+
+  update-status:
+    name: Update status table
+    needs: test
+    if: always()
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Download result artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: result-*
+          path: /tmp/results
+          merge-multiple: true
+
+      - name: Update STATUS.json and README
+        run: |
+          python3 tests/scripts/update-status.py \
+            --results-dir /tmp/results \
+            --status-file tests/STATUS.json \
+            --readme README.md \
+            --run-url-prefix "https://github.com/${{ github.repository }}/actions/runs"
+
+      - name: Commit and push status update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tests/STATUS.json README.md
+          git diff --staged --quiet || git commit -m "ci: update test status matrix [skip ci]"
+          git push
