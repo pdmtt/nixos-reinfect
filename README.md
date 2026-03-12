@@ -43,7 +43,7 @@ feel free to update this README and issue a pull request.
 
 | Provider | ubuntu-24.04 | debian-12 | debian-11 |
 |----------|:---:|:---:|:---:|
-| Hetzner | ⬜ n/a | ⬜ n/a | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23012670761) |
+| Hetzner | ✅ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23016330002) | ⬜ n/a | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23012670761) |
 | Digitalocean | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23011236734) | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23011236734) | ⬜ n/a |
 
 <!-- STATUS:END -->
