@@ -1,0 +1,11 @@
+{
+  "last_updated": "2026-03-12T16:00:20Z",
+  "results": {
+    "digitalocean/debian-12": {
+      "status": "failure",
+      "run_id": "23011236734",
+      "timestamp": "2026-03-12T16:00:04Z",
+      "run_url": "https://github.com/pdmtt/nixos-reinfect/actions/runs/23011236734"
+    }
+  }
+}

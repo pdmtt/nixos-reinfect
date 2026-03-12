@@ -38,10 +38,13 @@ feel free to update this README and issue a pull request.
 <!-- STATUS:BEGIN -->
 ## Automated Test Matrix
 
-> Last updated: n/a · Runs every Monday and Thursday via CI.
+> Last updated: 2026-03-12 · Runs every Monday and Thursday via CI.
 > Each cell links to the GitHub Actions run. Legend: ✅ pass · ❌ fail · ⬜ not tested
 
-*No test results yet — the table will be populated after the first CI run.*
+| Provider | debian-12 |
+|----------|:---:|
+| Digitalocean | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23011236734) |
+
 <!-- STATUS:END -->
 
 ## Motivation
