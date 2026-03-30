@@ -1,47 +1,47 @@
 {
-  "last_updated": "2026-03-26T05:11:57Z",
+  "last_updated": "2026-03-30T05:31:51Z",
   "results": {
     "digitalocean/debian-12": {
       "status": "failure",
-      "run_id": "23578475891",
-      "timestamp": "2026-03-26T05:11:03Z",
-      "run_url": "https://github.com/pdmtt/nixos-reinfect/actions/runs/23578475891"
+      "run_id": "23729318917",
+      "timestamp": "2026-03-30T05:31:24Z",
+      "run_url": "https://github.com/pdmtt/nixos-reinfect/actions/runs/23729318917"
     },
     "digitalocean/ubuntu-24.04": {
       "status": "failure",
-      "run_id": "23578475891",
-      "timestamp": "2026-03-26T05:11:46Z",
-      "run_url": "https://github.com/pdmtt/nixos-reinfect/actions/runs/23578475891"
+      "run_id": "23729318917",
+      "timestamp": "2026-03-30T05:31:22Z",
+      "run_url": "https://github.com/pdmtt/nixos-reinfect/actions/runs/23729318917"
     },
     "hetzner/debian-11": {
-      "status": "failure",
-      "run_id": "23578475891",
-      "timestamp": "2026-03-26T05:08:55Z",
-      "run_url": "https://github.com/pdmtt/nixos-reinfect/actions/runs/23578475891"
+      "status": "success",
+      "run_id": "23729318917",
+      "timestamp": "2026-03-30T05:28:46Z",
+      "run_url": "https://github.com/pdmtt/nixos-reinfect/actions/runs/23729318917"
     },
     "hetzner/ubuntu-24.04": {
-      "status": "failure",
-      "run_id": "23578475891",
-      "timestamp": "2026-03-26T05:08:54Z",
-      "run_url": "https://github.com/pdmtt/nixos-reinfect/actions/runs/23578475891"
+      "status": "success",
+      "run_id": "23729318917",
+      "timestamp": "2026-03-30T05:29:15Z",
+      "run_url": "https://github.com/pdmtt/nixos-reinfect/actions/runs/23729318917"
     },
     "hetzner/debian-12": {
-      "status": "failure",
-      "run_id": "23578475891",
-      "timestamp": "2026-03-26T05:08:45Z",
-      "run_url": "https://github.com/pdmtt/nixos-reinfect/actions/runs/23578475891"
+      "status": "success",
+      "run_id": "23729318917",
+      "timestamp": "2026-03-30T05:28:59Z",
+      "run_url": "https://github.com/pdmtt/nixos-reinfect/actions/runs/23729318917"
     },
     "hetzner/ubuntu-22.04": {
-      "status": "failure",
-      "run_id": "23578475891",
-      "timestamp": "2026-03-26T05:08:42Z",
-      "run_url": "https://github.com/pdmtt/nixos-reinfect/actions/runs/23578475891"
+      "status": "success",
+      "run_id": "23729318917",
+      "timestamp": "2026-03-30T05:29:18Z",
+      "run_url": "https://github.com/pdmtt/nixos-reinfect/actions/runs/23729318917"
     },
     "digitalocean/ubuntu-22.04": {
       "status": "failure",
-      "run_id": "23578475891",
-      "timestamp": "2026-03-26T05:11:44Z",
-      "run_url": "https://github.com/pdmtt/nixos-reinfect/actions/runs/23578475891"
+      "run_id": "23729318917",
+      "timestamp": "2026-03-30T05:31:40Z",
+      "run_url": "https://github.com/pdmtt/nixos-reinfect/actions/runs/23729318917"
     }
   }
 }

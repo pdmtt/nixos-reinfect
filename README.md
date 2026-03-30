@@ -16,11 +16,11 @@ assuring the script will successfully run as many times as needed.
 
 | Provider | debian-11 | debian-12 | ubuntu-22.04 | ubuntu-24.04 |
 |----------|:---:|:---:|:---:|:---:|
-| Digitalocean | ⬜ n/a | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23578475891) | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23578475891) | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23578475891) |
-| Hetzner | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23578475891) | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23578475891) | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23578475891) | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23578475891) |
+| Digitalocean | ⬜ n/a | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23729318917) | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23729318917) | ❌ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23729318917) |
+| Hetzner | ✅ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23729318917) | ✅ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23729318917) | ✅ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23729318917) | ✅ [run](https://github.com/pdmtt/nixos-reinfect/actions/runs/23729318917) |
 
 
-> Last updated: 2026-03-26
+> Last updated: 2026-03-30
 >
 > Each cell links to the GitHub Actions run.
 > 
