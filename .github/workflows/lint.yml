@@ -3,8 +3,13 @@ name: Lint
 on:
   pull_request:
     branches: [master]
+    paths:
+      - "**/*.sh"
+
   push:
     branches: [master]
+    paths:
+      - "**/*.sh"
 
 permissions:
   contents: read

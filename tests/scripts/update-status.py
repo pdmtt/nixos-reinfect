@@ -23,21 +23,12 @@ STATUS_ICONS = {
     "success": "✅",
     "failure": "❌",
 }
-STATUS_BLOCK_TEMPLATE = textwrap.dedent(f"""\
-    {{sentinel_begin}}
+STATUS_BLOCK_TEMPLATE = textwrap.dedent("""\
+    {sentinel_begin}
 
-    {{table}}
+    {table}
 
-    > Last updated: {{last_updated}}
-    >
-    > Each cell links to the GitHub Actions run.
-    > 
-    > Legend: 
-    > - {STATUS_ICONS["success"]} pass
-    > - {STATUS_ICONS["failure"]} fail
-    > - ⬜ not tested
-
-    {{sentinel_end}}""")
+    {sentinel_end}""")
 
 
 class Result(TypedDict):
@@ -51,7 +42,7 @@ class Result(TypedDict):
 
 class Status(TypedDict):
     last_updated: str
-    results: dict[str, Result]
+    results: list[Result]
 
 
 def load_results_from_files(results_dir_path: "Path") -> "list[Result]":
@@ -77,7 +68,7 @@ def load_status_from_file(status_file_path: "Path") -> "Status":
         with open(status_file_path) as f:
             return cast("Status", json.load(f))
     except FileNotFoundError:
-        return {"last_updated": "", "results": {}}
+        return {"last_updated": "", "results": []}
 
 
 def merge_results(
@@ -97,8 +88,6 @@ def merge_results(
             )
             continue
 
-        key = f"{provider}/{os_name}"
-
         partial_result = {
             "status": result.get("status", "failure"),
             "run_id": result.get("run_id", ""),
@@ -114,7 +103,7 @@ def merge_results(
 
         result = Result(**partial_result)
 
-        status["results"][key] = result
+        status["results"].append(result)
 
     status["last_updated"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -129,59 +118,33 @@ def save_status(status_file_path: "Path", status: "Status") -> None:
 
 
 def build_table(status: "Status") -> str:
-    all_providers: set[str] = set()
-    all_oses: set[str] = set()
+    all_providers: set[str] = set(r["provider"] for r in status["results"])
 
-    for key in status["results"]:
-        parts = key.split("/", 1)
-        if len(parts) == 2:
-            all_providers.add(parts[0])
-            all_oses.add(parts[1])
-
-    if not all_providers or not all_oses:
+    if not all_providers:
         return "*No test results yet.*\n"
 
-    providers = sorted(all_providers)
-    oses = sorted(all_oses)
-
     # Header row
-    header = "| Provider | " + " | ".join(oses) + " |"
-    separator = "|----------|" + "|".join([":---:"] * len(oses)) + "|"
+    header = "| Provider | Status | Last tested |"
+    separator = "|----------|:------:|:---------:|"
 
     rows = [header, separator]
 
-    for provider in providers:
-        cells: list[str] = []
-        for os_name in oses:
-            key = f"{provider}/{os_name}"
-            result = status["results"].get(key)
-            if result is None:
-                cells.append("⬜ n/a")
-            else:
-                icon = STATUS_ICONS.get(result["status"], "❓")
-                run_url = result.get("run_url", "")
-                if run_url:
-                    cells.append(f"{icon} [run]({run_url})")
-                else:
-                    cells.append(icon)
-        provider_label = provider.replace("-", " ").title()
+    for result in sorted(status["results"], key=lambda x: x["provider"]):
+        provider_label = result["provider"].replace("-", " ").title()
+        status_icon = STATUS_ICONS.get(result["status"], "❓")
+        run_url = result["run_url"]
+        timestamp = result["timestamp"]
 
-        rows.append(f"| {provider_label} | " + " | ".join(cells) + " |")
+        row = "|".join([provider_label, status_icon, f"[{timestamp}]({run_url})"])
+        rows.append(row)
 
     return "\n".join(rows) + "\n"
 
 
 def build_status_block(status: "Status") -> str:
-    try:
-        dt = datetime.fromisoformat(status["last_updated"].replace("Z", "+00:00"))
-        date_str = dt.strftime("%Y-%m-%d")
-    except (ValueError, AttributeError):
-        date_str = "unknown"
-
     table = build_table(status)
 
     return STATUS_BLOCK_TEMPLATE.format(
-        last_updated=date_str,
         table=table,
         sentinel_begin=SENTINEL_BEGIN,
         sentinel_end=SENTINEL_END,
