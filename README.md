@@ -91,7 +91,7 @@ write_files:
         environment.systemPackages = with pkgs; [ vim ];
       }
 runcmd:
-  - curl https://raw.githubusercontent.com/elitak/nixos-infect/master/nixos-infect.sh | PROVIDER=digitalocean NIXOS_IMPORT=./host.nix NIX_CHANNEL=nixos-24.05 bash 2>&1 | tee /tmp/infect.log
+  - curl https://raw.githubusercontent.com/pdmtt/nixos-reinfect/master/nixos-infect.sh | PROVIDER=digitalocean NIXOS_IMPORT=./host.nix NIX_CHANNEL=nixos-24.05 bash 2>&1 | tee /tmp/infect.log
 ```
 
 ### Hetzner
